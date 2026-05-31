@@ -52,20 +52,65 @@ PT_PD_BAND = (1.2, 1.6)    # Platinum/Palladium ratio
 REFRESH_SEC = 60
 
 # ----------------------------------------------------------------------------- DATA
+def _single(t, period, interval):
+    """Fetch one ticker on its own; return cleaned df or None."""
+    try:
+        df = yf.Ticker(t).history(period=period, interval=interval, auto_adjust=False)
+        df = df.dropna()
+        return df if not df.empty else None
+    except Exception:
+        return None
+
+
 @st.cache_data(ttl=REFRESH_SEC)
 def fetch(tickers, period="5d", interval="15m"):
-    """Bulk download; returns dict of DataFrames keyed by ticker."""
+    """Bulk download, then individually retry any ticker that came back empty.
+
+    Streamlit Cloud's shared IP sometimes gets throttled by Yahoo on the bulk
+    call, dropping individual tickers (e.g. NG=F). We retry those one-by-one,
+    then fall back to a coarser interval, then daily bars, so a single missing
+    ticker never shows as blank.
+    """
+    tickers = list(tickers)
     out = {}
-    data = yf.download(list(tickers), period=period, interval=interval,
-                       group_by="ticker", auto_adjust=False, progress=False, threads=True)
+    try:
+        data = yf.download(tickers, period=period, interval=interval,
+                           group_by="ticker", auto_adjust=False,
+                           progress=False, threads=True)
+        for t in tickers:
+            try:
+                df = data[t].dropna() if len(tickers) > 1 else data.dropna()
+                if not df.empty:
+                    out[t] = df
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    # Retry any ticker missing from the bulk result, individually.
     for t in tickers:
-        try:
-            df = data[t].dropna() if len(tickers) > 1 else data.dropna()
-            if not df.empty:
+        if t in out:
+            continue
+        for per, itv in [(period, interval), ("5d", "30m"), ("1mo", "1d")]:
+            df = _single(t, per, itv)
+            if df is not None:
                 out[t] = df
-        except Exception:
-            pass
+                break
     return out
+
+
+def _bars_per_day(df):
+    """Infer how many bars make up ~24h, from the median bar spacing."""
+    try:
+        if len(df) < 3:
+            return 1
+        deltas = df.index.to_series().diff().dropna()
+        med_min = deltas.median().total_seconds() / 60.0
+        if med_min <= 0:
+            return 1
+        return max(1, round(24 * 60 / med_min))
+    except Exception:
+        return 96  # assume 15-min bars
 
 
 def last(df):
@@ -73,16 +118,23 @@ def last(df):
 
 
 def pct_24h(df):
-    """Approx 24h change using ~96 fifteen-min bars."""
-    n = min(96, len(df) - 1)
+    """Approx 24h change, adapting to whatever bar size the data uses."""
+    bpd = _bars_per_day(df)
+    n = min(bpd, len(df) - 1)
     if n <= 0:
         return 0.0
     return (df["Close"].iloc[-1] / df["Close"].iloc[-1 - n] - 1) * 100
 
 
 def overnight_range(df):
-    """High/low of the last ~24h of bars — the scalping range."""
-    n = min(96, len(df))
+    """High/low of roughly the last 24h of bars — the scalping range.
+
+    Uses the inferred bars-per-day so it works whether the data is 15-min,
+    30-min, or daily-fallback bars. For daily data it takes the last ~2 days
+    so there's still a usable range.
+    """
+    bpd = _bars_per_day(df)
+    n = min(max(bpd, 2), len(df))
     window = df.tail(n)
     return float(window["High"].max()), float(window["Low"].min())
 
