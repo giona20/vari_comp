@@ -231,8 +231,27 @@ st.markdown(
             <div style="font-size:1.7rem; font-weight:700; line-height:1.1;">
                 Variational OMNI — TradFi Perps Monitor
             </div>
-            <div style="font-size:0.85rem; opacity:0.7;">Made by NUNO</div>
+            <div style="font-size:0.85rem; opacity:0.7; display:flex; align-items:center; gap:6px;">
+                Made by NUNO
+                <a href="https://x.com/Nun0bot" target="_blank" rel="noopener"
+                   style="display:inline-flex; align-items:center; text-decoration:none; opacity:0.85;"
+                   title="Follow NUNO on X">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"
+                         style="vertical-align:middle;">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                    <span style="margin-left:4px;">@Nun0bot</span>
+                </a>
+            </div>
         </div>
+        <a href="https://x.com/Nun0bot" target="_blank" rel="noopener"
+           style="margin-left:auto; display:inline-flex; align-items:center; justify-content:center;
+                  width:40px; height:40px; border-radius:10px; background:rgba(255,255,255,0.06);
+                  text-decoration:none;" title="Follow NUNO on X">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+        </a>
     </div>
     """,
     unsafe_allow_html=True,
